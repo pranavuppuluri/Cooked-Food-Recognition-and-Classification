@@ -1,0 +1,24 @@
+# Windows download provenance streams. These were committed by accident once and
+# made the repository impossible to check out on Windows at all, because ':' is
+# not a legal filename character there.
+*:Zone.Identifier
+
+# Model weights and checkpoints - too large for git.
+*.pth
+*.pt
+*.ckpt
+*.onnx
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Notebook exports
+*.pdf

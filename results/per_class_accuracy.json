@@ -1,0 +1,150 @@
+[
+  {
+    "class": "Aloo Puri",
+    "accuracy": 0.7826
+  },
+  {
+    "class": "Bhakarwadi",
+    "accuracy": 0.9474
+  },
+  {
+    "class": "Bhindi Masala",
+    "accuracy": 0.8857
+  },
+  {
+    "class": "Biryani",
+    "accuracy": 0.9767
+  },
+  {
+    "class": "Chhole Bhature",
+    "accuracy": 0.9783
+  },
+  {
+    "class": "Dal Bati Churma",
+    "accuracy": 0.775
+  },
+  {
+    "class": "Dal Makhni",
+    "accuracy": 1.0
+  },
+  {
+    "class": "Dhokla",
+    "accuracy": 0.9474
+  },
+  {
+    "class": "Dosa",
+    "accuracy": 1.0
+  },
+  {
+    "class": "Dum Aloo",
+    "accuracy": 0.9643
+  },
+  {
+    "class": "Ghevar",
+    "accuracy": 0.9655
+  },
+  {
+    "class": "Gulab Jamun",
+    "accuracy": 0.9714
+  },
+  {
+    "class": "Idli Sambhar",
+    "accuracy": 0.9268
+  },
+  {
+    "class": "Jalebi",
+    "accuracy": 0.9706
+  },
+  {
+    "class": "Kachori",
+    "accuracy": 1.0
+  },
+  {
+    "class": "Khakhra",
+    "accuracy": 1.0
+  },
+  {
+    "class": "Khandvi",
+    "accuracy": 1.0
+  },
+  {
+    "class": "Kheer",
+    "accuracy": 0.9091
+  },
+  {
+    "class": "Medu Vada",
+    "accuracy": 1.0
+  },
+  {
+    "class": "Modak",
+    "accuracy": 0.9118
+  },
+  {
+    "class": "Mushroom",
+    "accuracy": 0.9722
+  },
+  {
+    "class": "Nan Khatai",
+    "accuracy": 0.9565
+  },
+  {
+    "class": "Paneer",
+    "accuracy": 0.8684
+  },
+  {
+    "class": "Pani Puri",
+    "accuracy": 0.8846
+  },
+  {
+    "class": "Pav Bhaji",
+    "accuracy": 0.9412
+  },
+  {
+    "class": "Poha",
+    "accuracy": 0.9706
+  },
+  {
+    "class": "Rajma Chawal",
+    "accuracy": 0.8611
+  },
+  {
+    "class": "Rasgulla",
+    "accuracy": 0.9643
+  },
+  {
+    "class": "Rasmalai",
+    "accuracy": 0.9394
+  },
+  {
+    "class": "Samosa",
+    "accuracy": 0.9615
+  },
+  {
+    "class": "Sarson ka Saag Makki ki Roti",
+    "accuracy": 0.9474
+  },
+  {
+    "class": "Shrikhand",
+    "accuracy": 0.75
+  },
+  {
+    "class": "Siddu",
+    "accuracy": 0.875
+  },
+  {
+    "class": "Thepla",
+    "accuracy": 0.9118
+  },
+  {
+    "class": "Thukpa",
+    "accuracy": 1.0
+  },
+  {
+    "class": "Uttapam",
+    "accuracy": 0.9565
+  },
+  {
+    "class": "Vada Pav",
+    "accuracy": 1.0
+  }
+]

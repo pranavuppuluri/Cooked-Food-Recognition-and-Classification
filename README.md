@@ -1,234 +1,151 @@
 # Indian Food Classifier — ResNet-50
 
-**94% test accuracy** on 37 traditional Indian dishes using a fine-tuned ResNet-50 with video inference support.
+Recognises **37 traditional Indian dishes** from images, using a ResNet-50
+pretrained on ImageNet and fine-tuned end to end on `ind_food_37`.
 
-![Pipeline](assets/pipeline_diagram.png)
-
----
-
-## Table of Contents
-- [Overview](#overview)
-- [Dataset](#dataset)
-- [Pipeline](#pipeline)
-- [Model Architecture](#model-architecture)
-- [Training](#training)
-- [Results](#results)
-- [Inference](#inference)
-- [Project Structure](#project-structure)
-- [Setup & Usage](#setup--usage)
-
----
-
-## Overview
-
-This project trains a deep learning classifier to recognise **37 traditional Indian food dishes** from images and video frames. It uses a **ResNet-50** backbone pretrained on ImageNet, fine-tuned end-to-end on the `ind_food_37` dataset. An optional video analysis mode processes a video file frame-by-frame and serves results in a local HTML report.
-
-| Metric | Value |
-|---|---|
-| Architecture | ResNet-50 (fine-tuned) |
-| Trainable Parameters | 39,544,363 |
+| | |
+| --- | --- |
+| Architecture | ResNet-50, fine-tuned |
+| Trainable parameters | 39,544,363 |
 | Epochs | 80 |
-| Batch Size | 16 |
-| Test Accuracy | **94%** |
-| Macro F1-Score | **0.94** |
-| Classes | 37 |
-
----
-
-## Dataset
-
-**`ind_food_37`** — Indian Food 37 classes dataset structured as an `ImageFolder`:
-
-```
-ind_food_37/
-├── train/
-│   └── <class_name>/  (images)
-├── val/
-│   └── <class_name>/
-└── test/
-    └── <class_name>/
-```
-
-### Classes (37)
-`Aloo Puri` · `Bhakarwadi` · `Bhindi Masala` · `Biryani` · `Chhole Bhature` · `Dal Bati Churma` · `Dal Makhni` · `Dhokla` · `Dosa` · `Dum Aloo` · `Ghevar` · `Gulab Jamun` · `Idli Sambhar` · `Jalebi` · `Kachori` · `Khakhra` · `Khandvi` · `Kheer` · `Medu Vada` · `Modak` · `Mushroom` · `Nan Khatai` · `Paneer` · `Pani Puri` · `Pav Bhaji` · `Poha` · `Rajma Chawal` · `Rasgulla` · `Rasmalai` · `Samosa` · `Sarson ka Saag Makki ki Roti` · `Shrikhand` · `Siddu` · `Thepla` · `Thukpa` · `Uttapam` · `Vada Pav`
-
----
-
-## Pipeline
-
-![Pipeline Diagram](assets/pipeline_diagram.png)
-
-| Stage | Details |
-|---|---|
-| **Input** | RGB images in `ind_food_37/{train,val,test}` |
-| **Preprocessing** | Resize to 224x224, ToTensor, Normalize (ImageNet mean/std) |
-| **Model** | ResNet-50 pretrained on ImageNet; final FC replaced with Linear(2048 to 37) |
-| **Loss** | CrossEntropyLoss |
-| **Optimizer** | Adam |
-| **Scheduler** | `ReduceLROnPlateau` (val loss) |
-| **Grad Clipping** | `clip_grad_norm_` |
-| **Checkpointing** | Best model weights saved by val accuracy |
-| **Evaluation** | Per-class accuracy, macro F1, confusion matrix |
-| **Inference** | Single image or video frame-by-frame |
-
----
-
-## Model Architecture
-
-![ResNet-50 Architecture](assets/resnet50_architecture.png)
-
-ResNet-50 uses stacked **Bottleneck** residual blocks (1x1 to 3x3 to 1x1 convolutions with a skip connection) across 4 stages, followed by Global Average Pooling. The original 1000-class head is replaced with a **Linear(2048 to 37)** layer for this task.
-
-```
-Input (224x224x3)
-    |-- Conv1: 7x7, 64, stride 2   -->  112x112x64
-    |-- MaxPool: 3x3, stride 2     -->   56x56x64
-    |-- Layer1: 3x Bottleneck      -->   56x56x256
-    |-- Layer2: 4x Bottleneck      -->   28x28x512
-    |-- Layer3: 6x Bottleneck      -->   14x14x1024
-    |-- Layer4: 3x Bottleneck      -->    7x7x2048
-    |-- AdaptiveAvgPool            -->      2048
-    |-- FC (2048 -> 37)            -->        37
-```
-
----
-
-## Training
-
-![Training Curves](assets/training_curves.png)
-
-### Hyperparameters
-| Parameter | Value |
-|---|---|
-| Epochs | 80 |
-| Batch Size | 16 |
-| Optimizer | Adam |
-| LR Scheduler | ReduceLROnPlateau |
-| Grad Clip Norm | Enabled |
-| Input Size | 224 x 224 |
-| Normalisation | ImageNet mean/std |
-
-The model was trained on **NVIDIA Tesla T4 GPU** (Kaggle environment).
+| Batch size | 16 |
+| Input | 224×224 RGB |
+| Loss | Cross-entropy |
+| Optimiser | SGD, lr 1e-3, momentum 0.9 |
+| LR schedule | `ReduceLROnPlateau` (factor 0.2, patience 3) |
+| **Best validation accuracy** | **0.940** (epoch 59) |
+| **Mean per-class test accuracy** | **0.937** |
 
 ---
 
 ## Results
 
-![Per-Class Accuracy](assets/per_class_accuracy.png)
+### Training
 
-### Overall Metrics
-| Split | Accuracy | Macro Precision | Macro Recall | Macro F1 |
-|---|---|---|---|---|
-| Test | **94%** | 0.94 | 0.94 | 0.94 |
+![Training curves](assets/training_curves.png)
 
-### Perfect-Accuracy Classes (1.00)
-Dal Makhni · Dosa · Kachori · Khakhra · Khandvi · Medu Vada · Thukpa · Vada Pav
+Validation accuracy reaches **0.940 at epoch 59** and then flattens, while
+training accuracy keeps climbing toward 0.97. That gap is the honest read on this
+run: the last twenty epochs buy nothing on validation, and the model is starting
+to memorise. The checkpoint worth keeping is epoch 59, not epoch 79.
 
-### Lowest Accuracy Classes
-| Class | Accuracy |
-|---|---|
-| Shrikhand | 75.0% |
-| Dal Bati Churma | 77.5% |
-| Aloo Puri | 78.3% |
+### Per class
 
----
+![Per-class accuracy](assets/per_class_accuracy.png)
 
-## Inference
+Eight classes are perfect on the test split — Vada Pav, Thukpa, Medu Vada,
+Khandvi, Khakhra, Kachori, Dosa, Dal Makhni — and **eight sit below 0.90**:
 
-### Single Image
-```python
-from src.predict import predict_image
-label, confidence = predict_image("path/to/food.jpg")
-print(f"Prediction: {label}  ({confidence*100:.1f}%)")
-```
+| Class | Accuracy | Likely reason |
+| --- | --- | --- |
+| Shrikhand | 0.75 | 15/20. A plain bowl of thick white-yellow dairy, visually near Kheer and Rasmalai |
+| Dal Bati Churma | 0.78 | A composite plate; the model sees whichever element dominates the crop |
+| Aloo Puri | 0.78 | Shares nearly every visual cue with Chhole Bhature |
+| Rajma Chawal | 0.86 | Brown curry beside white rice — the generic Indian plate layout |
+| Paneer | 0.87 | A label spanning many different dishes |
+| Siddu | 0.88 | Only 16 test images, so 14/16 — a noisy estimate |
+| Pani Puri | 0.88 | Confused with Kachori and Samosa — all round and fried |
+| Bhindi Masala | 0.89 | Dark-green sabzi, close to other dry vegetable dishes |
 
-### Video Analysis
-The notebook includes a `process_video()` function that:
-1. Captures one frame per second from a video file
-2. Runs the classifier on each frame
-3. Saves frames to `captured_frames/`
-4. Generates a browseable `video_results.html` report served on localhost
+The pattern is consistent: failures cluster where dishes share **colour and
+plating**, not where they are rare. More data alone would not fix Shrikhand; the
+fix is harder negatives against the dairy-dessert group.
 
-```python
-process_video(
-    video_path="my_food_video.mp4",
-    output_folder="captured_frames",
-    html_path="video_results.html"
-)
-```
+Raw numbers behind both charts are in [`results/`](results/), and
+[`results/make_charts.py`](results/make_charts.py) regenerates the figures.
 
 ---
 
-## Project Structure
+## Dataset
+
+`ind_food_37` — 8,395 images across 37 classes, in `ImageFolder` layout.
+
+| Split | Images |
+| --- | --- |
+| train | 6,185 |
+| val | 1,092 |
+| test | 1,118 |
 
 ```
-indian-food-classifier/
-├── resnet_food.ipynb          # Main training notebook
-├── src/
-│   ├── dataset.py             # Dataset & DataLoader helpers
-│   ├── model.py               # Model definition
-│   ├── train.py               # Training loop
-│   └── predict.py             # Inference utilities
-├── assets/
-│   ├── pipeline_diagram.png
-│   ├── resnet50_architecture.png
-│   ├── training_curves.png
-│   └── per_class_accuracy.png
-├── requirements.txt
-└── README.md
+ind_food_37/
+├── train/<class_name>/*.jpg
+├── val/<class_name>/*.jpg
+└── test/<class_name>/*.jpg
 ```
+
+<details>
+<summary>All 37 classes</summary>
+
+Aloo Puri · Bhakarwadi · Bhindi Masala · Biryani · Chhole Bhature ·
+Dal Bati Churma · Dal Makhni · Dhokla · Dosa · Dum Aloo · Ghevar · Gulab Jamun ·
+Idli Sambhar · Jalebi · Kachori · Khakhra · Khandvi · Kheer · Medu Vada ·
+Modak · Mushroom · Nan Khatai · Paneer · Pani Puri · Pav Bhaji · Poha ·
+Rajma Chawal · Rasgulla · Rasmalai · Samosa · Sarson ka Saag Makki ki Roti ·
+Shrikhand · Siddu · Thepla · Thukpa · Uttapam · Vada Pav
+
+</details>
+
+Images are resized to 224×224 and normalised with ImageNet statistics. No
+augmentation beyond that — which is one of the clearer things to try next.
 
 ---
 
-## Setup & Usage
+## Setup
 
-### 1. Clone & Install
 ```bash
-git clone https://github.com/<your-username>/indian-food-classifier.git
-cd indian-food-classifier
+git clone https://github.com/pranavuppuluri/Cooked-Food-Recognition-and-Classification.git
+cd Cooked-Food-Recognition-and-Classification
+
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Prepare Dataset
-Place the `ind_food_37` dataset folder (with `train/`, `val/`, `test/` sub-folders) in the project root.
+Install `torch` for your own CUDA version from [pytorch.org](https://pytorch.org)
+if you want GPU training. On CPU, 80 epochs is not practical.
 
-### 3. Train
-Open and run `resnet_food.ipynb`, or use the modular scripts:
+Then open the notebook:
+
 ```bash
-python src/train.py --epochs 80 --batch_size 16
+jupyter notebook notebooks/resnet_food.ipynb
 ```
 
-### 4. Evaluate
-```bash
-python src/predict.py --mode eval --data_path ind_food_37/test
-```
-
-### 5. Run on a Video
-```bash
-python src/predict.py --mode video --video_path myfood.mp4
-```
+It reads `ind_food_37/train` and `ind_food_37/val` directly, so it runs against
+the dataset in this repository with no path changes.
 
 ---
 
-## Requirements
+## Repository layout
 
 ```
-torch>=2.0
-torchvision>=0.15
-opencv-python
-scikit-learn
-matplotlib
-pandas
-tqdm
-numpy
-pillow
+├── ind_food_37/           # the dataset, ImageFolder layout
+├── notebooks/
+│   └── resnet_food.ipynb  # training, evaluation and video inference
+├── assets/                # figures used in this README
+├── results/
+│   ├── training_history.json     # 80 epochs of train/val loss and accuracy
+│   ├── per_class_accuracy.json   # final accuracy for each of the 37 classes
+│   └── make_charts.py            # regenerates the figures from those files
+├── requirements.txt
+└── LICENSE
 ```
+
+**What is not here:** trained weights (too large for git) and a packaged `src/`
+module. The notebook is the implementation — it is exploratory in places, and it
+is the honest artefact of how the model was actually built.
+
+---
+
+## Notes
+
+The notebook also contains a video-inference path that reads a video file,
+classifies frames, and writes an HTML summary. It depends on OpenCV and is less
+polished than the training code.
+
+If you re-run training, the result worth keeping is the **epoch-59 checkpoint**,
+not the final one — see the training curves above.
 
 ---
 
 ## License
-MIT License
 
----
-
-*Built with PyTorch · ResNet-50 · Kaggle T4 GPU*
+MIT — see [LICENSE](LICENSE).
