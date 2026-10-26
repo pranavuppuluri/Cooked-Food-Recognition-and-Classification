@@ -1,11 +1,12 @@
-# Indian Food Classifier — ResNet-50
+# Indian Food Classifier
 
-Recognises **37 traditional Indian dishes** from images, using a ResNet-50
-pretrained on ImageNet and fine-tuned end to end on `ind_food_37`.
+Recognises **37 traditional Indian dishes** from images with a two-track
+network: a ResNet-50 trunk pretrained on ImageNet, fused with a small custom
+CNN, and trained end to end on `ind_food_37`.
 
 | | |
 | --- | --- |
-| Architecture | ResNet-50, fine-tuned |
+| Architecture | Dual-track: ResNet-50 trunk + Inception/Ghost/ECA CNN, SE fusion, 3-layer head |
 | Trainable parameters | 39,544,363 |
 | Epochs | 80 |
 | Batch size | 16 |
@@ -15,6 +16,39 @@ pretrained on ImageNet and fine-tuned end to end on `ind_food_37`.
 | LR schedule | `ReduceLROnPlateau` (factor 0.2, patience 3) |
 | **Best validation accuracy** | **0.940** (epoch 59) |
 | **Mean per-class test accuracy** | **0.937** |
+
+---
+
+## The model
+
+The notebook calls it `DualTrackModel`, and the parameter count only adds up
+for that: a fine-tuned ResNet-50 on its own would be 23.6M with a 37-way head.
+Two tracks look at the same 224x224 image.
+
+```mermaid
+flowchart LR
+  img["224x224 image"] --> r["ResNet-50 trunk<br/>ImageNet weights, no head<br/>2048 x 7 x 7"]
+  img --> c["Custom track<br/>7x7 conv, Inception, 2 Ghost+ECA blocks<br/>1024 x 56 x 56"]
+  r --> up["resample to 56 x 56"]
+  up --> cat["concat 3072 ch<br/>SE channel gate"]
+  c --> cat
+  cat --> pool["global average pool"]
+  pool --> fc["1536, 768, 37<br/>dropout 0.5"]
+```
+
+- **Track 1** is `torchvision.models.resnet50` with the pooling and classifier
+  removed, so it contributes a 2048-channel map.
+- **Track 2** is a stride-4 CNN: a 7x7 stem, an Inception block, two blocks of
+  channel shuffle, a Ghost module and ECA attention, then a 1x1 expansion to
+  1024 channels.
+- The ResNet map is resampled up to the second track's 56x56, the two are
+  concatenated and re-weighted by a squeeze-and-excitation gate, pooled, and
+  classified by a three-layer head with dropout.
+
+The definition lives in [`src/indfood/model.py`](src/indfood/model.py), taken
+from the notebook unchanged apart from the weights API. Whether the second
+track earns its 16M parameters over the plain ResNet-50 is an open question;
+the notebook never ran the ablation.
 
 ---
 
@@ -51,8 +85,31 @@ The pattern is consistent: failures cluster where dishes share **colour and
 plating**, not where they are rare. More data alone would not fix Shrikhand; the
 fix is harder negatives against the dairy-dessert group.
 
-Raw numbers behind both charts are in [`results/`](results/), and
-[`results/make_charts.py`](results/make_charts.py) regenerates the figures.
+### Does class size explain it?
+
+No. The training split is unbalanced, from 71 images (Khakhra) to 273
+(Paneer), so the obvious suspicion is that the weak classes are the small ones.
+The numbers say otherwise.
+
+![Test accuracy against training-set size](assets/accuracy_vs_train_size.png)
+
+| | |
+| --- | --- |
+| Spearman rank correlation, training images vs test accuracy | **-0.28** |
+| Mean test accuracy, smallest third of classes | 0.939 |
+| Mean test accuracy, largest third of classes | 0.915 |
+
+Four of the eight weak classes (Paneer, Dal Bati Churma, Rajma Chawal, Bhindi
+Masala) are among the eight **largest** training classes, and the smallest
+class of all, Khakhra, is perfect on the test split. If anything, the big
+classes are the ambiguous ones: Paneer and Dal Bati Churma are labels that
+cover several different-looking plates. [`results/dataset_stats.py`](results/dataset_stats.py)
+counts the dataset, computes the correlation and draws the chart; the counts
+are in [`results/dataset_counts.json`](results/dataset_counts.json).
+
+Raw numbers behind the charts are in [`results/`](results/), and
+[`results/make_charts.py`](results/make_charts.py) regenerates the training and
+per-class figures from any working directory.
 
 ---
 
@@ -103,7 +160,37 @@ pip install -r requirements.txt
 Install `torch` for your own CUDA version from [pytorch.org](https://pytorch.org)
 if you want GPU training. On CPU, 80 epochs is not practical.
 
-Then open the notebook:
+### Train, evaluate, predict from the command line
+
+The notebook's model and training recipe are packaged under `src/indfood`:
+
+```bash
+pip install -e .
+
+# Same recipe as the published run: SGD 1e-3, ReduceLROnPlateau, 80 epochs.
+python -m indfood.train --data ind_food_37 --epochs 80 --out runs/baseline
+# The same with random crop, flip and colour jitter on the training split.
+python -m indfood.train --data ind_food_37 --epochs 80 --out runs/augment --augment
+
+# Per-class accuracy and a confusion matrix on the test split.
+python -m indfood.evaluate --weights runs/baseline/best.pth --split test --out results/eval
+
+# Top guesses for your own photos.
+python -m indfood.predict --weights runs/baseline/best.pth photo.jpg
+```
+
+`train` writes `history.json` in the same shape as `results/training_history.json`
+after every epoch and keeps the best-validation weights at `best.pth`. Add
+`--amp` on a GPU for mixed precision, and `--workers 4` to load images in
+parallel. `evaluate` also reads the full training checkpoints the notebook
+saved every nine epochs.
+
+```bash
+pip install -e ".[test]"
+pytest                 # trains, evaluates and predicts on a tiny synthetic dataset, CPU, ~15s
+```
+
+### The notebook
 
 ```bash
 jupyter notebook notebooks/resnet_food.ipynb
@@ -118,20 +205,31 @@ the dataset in this repository with no path changes.
 
 ```
 ├── ind_food_37/           # the dataset, ImageFolder layout
+├── src/indfood/
+│   ├── model.py           # the dual-track network, as the notebook defines it
+│   ├── data.py            # ImageFolder loaders, with optional augmentation
+│   ├── train.py           # the notebook's training recipe as a CLI
+│   ├── evaluate.py        # per-class accuracy and confusion matrix
+│   └── predict.py         # classify your own images
+├── tests/                 # end-to-end smoke test on a synthetic dataset
 ├── notebooks/
-│   └── resnet_food.ipynb  # training, evaluation and video inference
+│   └── resnet_food.ipynb  # the original: training, evaluation and video inference
 ├── assets/                # figures used in this README
 ├── results/
 │   ├── training_history.json     # 80 epochs of train/val loss and accuracy
 │   ├── per_class_accuracy.json   # final accuracy for each of the 37 classes
-│   └── make_charts.py            # regenerates the figures from those files
+│   ├── dataset_counts.json       # images per class per split
+│   ├── make_charts.py            # regenerates the training and per-class figures
+│   └── dataset_stats.py          # counts the dataset, accuracy vs class size
+├── pyproject.toml
 ├── requirements.txt
 └── LICENSE
 ```
 
-**What is not here:** trained weights (too large for git) and a packaged `src/`
-module. The notebook is the implementation — it is exploratory in places, and it
-is the honest artefact of how the model was actually built.
+**What is not here:** trained weights, which are too large for git. The
+notebook is where the model was actually built and is exploratory in places;
+`src/indfood` is the same model and recipe, tidied into something you can run
+and test.
 
 ---
 

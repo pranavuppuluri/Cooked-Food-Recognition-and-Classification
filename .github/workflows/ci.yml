@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The dataset is 80 MB of images the tests never read.
+          sparse-checkout: |
+            src
+            tests
+            results
+            pyproject.toml
+            requirements.txt
+            README.md
+            LICENSE
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # The CPU wheel is a tenth the size of the default CUDA build.
+      - run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -e ".[test]"
+      - run: pytest -q
