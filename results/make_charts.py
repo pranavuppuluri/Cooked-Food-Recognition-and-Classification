@@ -13,17 +13,25 @@ Design notes:
     and dark GitHub themes.
 """
 import json
+from pathlib import Path
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+# Paths are relative to the repository, not the working directory, so
+# `python results/make_charts.py` works from anywhere.
+ROOT = Path(__file__).resolve().parent.parent
+RESULTS = ROOT / "results"
+ASSETS = ROOT / "assets"
 
 INK = "#57606a"      # readable on white and on GitHub dark
 GRID = "#d0d7de"
 ACCENT = "#1f6feb"   # validation / the series that matters
 MUTED = "#9198a1"    # training / context
 
-hist = json.load(open("./_tmp/results/training_history.json"))
-per_class = json.load(open("./_tmp/results/per_class_accuracy.json"))
+hist = json.load(open(RESULTS / "training_history.json"))
+per_class = json.load(open(RESULTS / "per_class_accuracy.json"))
 
 ep = [h["epoch"] for h in hist]
 
@@ -75,7 +83,7 @@ for t in leg.get_texts():
     t.set_color(INK)
 
 fig.tight_layout(rect=(0, 0, 1, 0.97))
-fig.savefig("./_tmp/assets/training_curves.png", transparent=True, bbox_inches="tight")
+fig.savefig(ASSETS / "training_curves.png", transparent=True, bbox_inches="tight")
 plt.close(fig)
 
 # --- figure 2: per-class accuracy ----------------------------------------
@@ -122,7 +130,7 @@ ax.annotate(f"{sum(1 for v in vals if v < 0.90)} classes below 0.90",
             textcoords="offset points", fontsize=8.5, color=WEAK, ha="left")
 
 fig.tight_layout()
-fig.savefig("./_tmp/assets/per_class_accuracy.png", transparent=True, bbox_inches="tight")
+fig.savefig(ASSETS / "per_class_accuracy.png", transparent=True, bbox_inches="tight")
 plt.close(fig)
 
 print("wrote training_curves.png and per_class_accuracy.png")
