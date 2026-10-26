@@ -107,6 +107,49 @@ cover several different-looking plates. [`results/dataset_stats.py`](results/dat
 counts the dataset, computes the correlation and draws the chart; the counts
 are in [`results/dataset_counts.json`](results/dataset_counts.json).
 
+### Does augmentation help? Not in 30 epochs
+
+The original run used no augmentation, and the gap between train and
+validation accuracy after epoch 59 looked like the first thing to fix. Two
+fresh 30-epoch runs with the packaged trainer compare it directly: the same
+recipe, seed and GPU, one with no augmentation and one with random resized
+crop, horizontal flip and colour jitter on the training split.
+
+![Augmentation experiment](assets/augmentation_experiment.png)
+
+| | No augmentation | Crop, flip, colour jitter |
+| --- | --- | --- |
+| Best validation accuracy (epoch 29) | **0.868** | 0.829 |
+| Test accuracy | **0.877** | 0.831 |
+| Mean per-class test accuracy | **0.847** | 0.794 |
+| Classes better / worse than the other run | | 5 better, 20 worse |
+| Minutes on an RTX 4070 Laptop GPU | 41 | 40 |
+
+At this budget augmentation costs about four points everywhere. It slows
+learning rather than curing overfitting: neither run overfits by epoch 29, and
+validation accuracy sits above train in both, because dropout is active during
+training. The learning rate never dropped in either run, so both were still
+climbing when they stopped.
+
+So this does not settle the original question. Augmentation is meant to pay
+off late, when the plain run starts to memorise, and that only happens after
+epoch 59. The test needs the full 80 epochs for both runs, about two hours
+each on this GPU.
+
+The fresh baseline reproduces the published curve: 0.868 validation accuracy
+at epoch 29, against 0.855 in the original. Its commonest test errors support
+the per-class reading above. Shrikhand goes to Rasmalai and Kheer, and Aloo
+Puri goes to Chhole Bhature, which gets eight such errors in the augmented run.
+
+```bash
+python -m indfood.train --epochs 30 --amp --workers 4 --out runs/baseline
+python -m indfood.train --epochs 30 --amp --workers 4 --out runs/augment --augment
+python results/compare_runs.py runs/baseline runs/augment
+```
+
+The per-epoch numbers for both runs are in
+[`results/augmentation_experiment.json`](results/augmentation_experiment.json).
+
 Raw numbers behind the charts are in [`results/`](results/), and
 [`results/make_charts.py`](results/make_charts.py) regenerates the training and
 per-class figures from any working directory.
@@ -142,8 +185,8 @@ Shrikhand · Siddu · Thepla · Thukpa · Uttapam · Vada Pav
 
 </details>
 
-Images are resized to 224×224 and normalised with ImageNet statistics. No
-augmentation beyond that — which is one of the clearer things to try next.
+Images are resized to 224×224 and normalised with ImageNet statistics, with no
+augmentation. Adding it did not help over 30 epochs; see the experiment above.
 
 ---
 
@@ -220,7 +263,9 @@ the dataset in this repository with no path changes.
 │   ├── per_class_accuracy.json   # final accuracy for each of the 37 classes
 │   ├── dataset_counts.json       # images per class per split
 │   ├── make_charts.py            # regenerates the training and per-class figures
-│   └── dataset_stats.py          # counts the dataset, accuracy vs class size
+│   ├── dataset_stats.py          # counts the dataset, accuracy vs class size
+│   ├── compare_runs.py           # charts two or more training runs side by side
+│   └── augmentation_experiment.json  # 30-epoch runs with and without augmentation
 ├── pyproject.toml
 ├── requirements.txt
 └── LICENSE

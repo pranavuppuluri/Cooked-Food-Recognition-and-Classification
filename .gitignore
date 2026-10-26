@@ -9,10 +9,14 @@
 *.ckpt
 *.onnx
 
+# Training runs: weights and per-run logs. Summaries worth keeping go in results/.
+runs/
+
 # Python
 __pycache__/
 *.py[cod]
 .venv/
+*.egg-info/
 venv/
 .ipynb_checkpoints/
 
