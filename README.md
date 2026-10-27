@@ -278,6 +278,28 @@ and test.
 
 ---
 
+## Serve it on the web (HealthNow)
+
+`serve/app.py` is a small Flask app that puts the classifier behind a web page,
+deployed as **HealthNow** on the author's own box. It loads
+`runs/baseline/best.pth` once on the CPU, serves a phone-friendly page
+(`serve/index.html`) for taking or picking a photo, and answers `POST /predict`
+with the top guesses.
+
+```bash
+pip install flask flask-cors pillow
+WEIGHTS=runs/baseline/best.pth PORT=8000 python serve/app.py
+# then open http://127.0.0.1:8000/ or POST an image to /predict
+```
+
+Every real request is saved under `live_usage/` (the photo in `images/`, the
+prediction appended to `predictions.jsonl`), so the repo gathers genuine
+in-the-wild examples to review later. The author's instance runs it as a
+systemd service on a private Linux box and exposes it publicly with Tailscale
+Funnel, linked from the unhuman.in launcher.
+
+---
+
 ## Notes
 
 The notebook also contains a video-inference path that reads a video file,
