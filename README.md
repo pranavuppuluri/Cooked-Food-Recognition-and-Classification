@@ -290,13 +290,19 @@ with the top guesses.
 pip install flask flask-cors pillow
 WEIGHTS=runs/baseline/best.pth PORT=8000 python serve/app.py
 # then open http://127.0.0.1:8000/ or POST an image to /predict
+#
+# optional soft gate: a free try, then a password (kept out of the repo)
+# HEALTHNOW_PASSWORD=... HEALTHNOW_FREE_USES=1 PORT=8000 python serve/app.py
 ```
 
 Every real request is saved under `live_usage/` (the photo in `images/`, the
 prediction appended to `predictions.jsonl`), so the repo gathers genuine
 in-the-wild examples to review later. The author's instance runs it as a
 systemd service on a private Linux box and exposes it publicly with Tailscale
-Funnel, linked from the unhuman.in launcher.
+Funnel, linked from the unhuman.in launcher. Anyone may try the
+first photo for free; past that the page asks for a password before it keeps
+classifying. The password comes from the HEALTHNOW_PASSWORD environment
+variable on the box, so it never lives in this repo.
 
 ---
 
