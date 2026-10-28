@@ -57,6 +57,14 @@
       button.primary { background: var(--accent); border-color: var(--accent); color: #2a0f06; }
       button:hover { border-color: var(--accent); }
       input[type="file"] { display: none; }
+      .gate { display: none; grid-template-columns: 1fr auto; gap: 10px; margin-top: 14px; }
+      .gate.show { display: grid; }
+      .gate input {
+        font: inherit; border-radius: 12px; padding: 13px 14px; min-width: 0;
+        border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
+      }
+      .gate input:focus { outline: none; border-color: var(--accent); }
+      .gate button { white-space: nowrap; padding-left: 18px; padding-right: 18px; }
       .status { margin-top: 16px; min-height: 20px; color: var(--muted); font-size: 14px; text-align: center; }
       .status.err { color: #ff8f8f; }
       .results { margin-top: 18px; display: none; }
@@ -109,6 +117,11 @@
         <input type="file" id="camInput" accept="image/*" capture="environment" />
         <input type="file" id="galInput" accept="image/*" />
 
+        <div class="gate" id="gate">
+          <input type="password" id="pw" placeholder="Password to keep going" autocomplete="current-password" />
+          <button id="pwBtn">Unlock</button>
+        </div>
+
         <div class="status" id="status"></div>
 
         <div class="results" id="results">
@@ -126,15 +139,28 @@
     <script>
       const $ = (id) => document.getElementById(id);
       const stage = $("stage"), preview = $("preview"), status = $("status");
-      const results = $("results"), rest = $("rest");
+      const results = $("results"), rest = $("rest"), gate = $("gate");
+
+      let pw = "";
+      let lastFile = null;
 
       $("camBtn").onclick = () => $("camInput").click();
       $("galBtn").onclick = () => $("galInput").click();
       $("camInput").onchange = (e) => handle(e.target.files[0]);
       $("galInput").onchange = (e) => handle(e.target.files[0]);
 
+      $("pwBtn").onclick = submitPw;
+      $("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") submitPw(); });
+
+      function submitPw() {
+        pw = $("pw").value.trim();
+        if (!pw) { $("pw").focus(); return; }
+        if (lastFile) handle(lastFile);
+      }
+
       async function handle(file) {
         if (!file) return;
+        lastFile = file;
         preview.src = URL.createObjectURL(file);
         stage.classList.add("has-img");
         results.classList.remove("show");
@@ -143,12 +169,28 @@
 
         const body = new FormData();
         body.append("image", file);
+        if (pw) body.append("password", pw);
         try {
-          const res = await fetch("predict", { method: "POST", body });
+          const res = await fetch("predict", { method: "POST", body, credentials: "same-origin" });
           const data = await res.json();
+          if (res.status === 401 && data.error === "password_required") {
+            gate.classList.add("show");
+            $("pw").focus();
+            status.className = "status";
+            status.textContent = data.message || "Enter the password to keep going.";
+            return;
+          }
           if (!res.ok) throw new Error(data.error || ("Server answered " + res.status));
           render(data.top || []);
-          status.textContent = "";
+          if (data.unlocked) {
+            gate.classList.remove("show");
+            status.textContent = "";
+          } else if (data.free_left === 0) {
+            gate.classList.add("show");
+            status.textContent = "That was the free try. The next photo needs the password.";
+          } else {
+            status.textContent = "";
+          }
         } catch (err) {
           status.className = "status err";
           status.textContent = err.message || "Could not reach the model.";
